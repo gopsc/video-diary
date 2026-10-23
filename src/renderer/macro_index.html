@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; media-src 'self' blob: file:;" />
+  <title>视频日记</title>
+  <link rel="stylesheet" href="macro_style.css" />
+</head>
+<body>
+  <main class="container">
+    <header class="app-header">
+      <h1>视频日记</h1>
+      <span id="status" class="status-badge">就绪</span>
+    </header>
+
+    <section class="preview-panel">
+      <div class="video-frame">
+        <video id="preview" autoplay muted playsinline></video>
+        <video id="player" controls playsinline hidden></video>
+        <div id="rec_indicator" class="rec-indicator" hidden>
+          <span class="rec-dot"></span>
+          <span id="timer">00:00</span>
+        </div>
+      </div>
+      <div class="meter"><div id="mic_bar" class="mic-bar"></div></div>
+      <div class="controls">
+        <button id="btn_start" class="btn btn-record">开始录制</button>
+        <button id="btn_stop" class="btn btn-stop" disabled>停止</button>
+        <button id="btn_save" class="btn btn-save" disabled>保存日记</button>
+      </div>
+    </section>
+
+    <section class="history-panel">
+      <h2>历史日记</h2>
+      <ul id="video_list" class="video-list"></ul>
+
+    </section>
+  </main>
+
+  <script src="macro_renderer.js"></script>
+</body>
+</html>

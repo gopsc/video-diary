@@ -1,0 +1,13 @@
+{
+  "name": "video-diary",
+  "version": "0.1.0",
+  "description": "Video Diary - record daily video journals via camera and microphone",
+  "main": "src/main/macro_main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.4.0"
+  }
+}
