@@ -7,12 +7,16 @@ const btnStart = document.getElementById('btn_start');
 const btnStop = document.getElementById('btn_stop');
 const btnSave = document.getElementById('btn_save');
 const videoList = document.getElementById('video_list');
+const cameraSelect = document.getElementById('camera_select');
+const micSelect = document.getElementById('mic_select');
 
 let mediaStream = null;
 let mediaRecorder = null;
 let recordedChunks = [];
 let timerId = null;
 let elapsedSec = 0;
+let audioContext = null;
+let micSource = null;
 
 function setStatus(text) {
   statusEl.textContent = text;
@@ -39,18 +43,26 @@ function stopTimer() {
 }
 
 
-function setupMicMeter(stream) {
-  const audioContext = new AudioContext();
-  const source = audioContext.createMediaStreamSource(stream);
-  const analyser = audioContext.createAnalyser();
-  analyser.fftSize = 512;
-  source.connect(analyser);
+let meterRunning = false;
+let micAnalyser = null;
 
-  const dataArray = new Uint8Array(analyser.frequencyBinCount);
+function setupMicMeter(stream) {
+  if (!audioContext) audioContext = new AudioContext();
+  if (audioContext.state === 'suspended') audioContext.resume();
+  if (micSource) micSource.disconnect();
+  micSource = audioContext.createMediaStreamSource(stream);
+  micAnalyser = audioContext.createAnalyser();
+  micAnalyser.fftSize = 512;
+  micSource.connect(micAnalyser);
+
+  if (meterRunning) return;
+  meterRunning = true;
+
+  const dataArray = new Uint8Array(micAnalyser.frequencyBinCount);
   const micBar = document.getElementById('mic_bar');
 
   function updateMeter() {
-    analyser.getByteTimeDomainData(dataArray);
+    micAnalyser.getByteTimeDomainData(dataArray);
     let sum = 0;
     for (let i = 0; i < dataArray.length; i++) {
       const v = (dataArray[i] - 128) / 128;
@@ -63,15 +75,54 @@ function setupMicMeter(stream) {
   updateMeter();
 }
 
+function fillSelect(select, devices, fallback) {
+  const current = select.value;
+  select.innerHTML = '';
+  devices.forEach((d, i) => {
+    const opt = document.createElement('option');
+    opt.value = d.deviceId;
+    opt.textContent = d.label || `${fallback} ${i + 1}`;
+    select.appendChild(opt);
+  });
+  if (current && devices.some((d) => d.deviceId === current)) {
+    select.value = current;
+  }
+}
+
+async function refreshDevices() {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    fillSelect(cameraSelect, devices.filter((d) => d.kind === 'videoinput'), '摄像头');
+    fillSelect(micSelect, devices.filter((d) => d.kind === 'audioinput'), '麦克风');
+  } catch (err) {
+    setStatus(`无法枚举设备：${err.message}`);
+  }
+}
+
 async function initCamera() {
   try {
-    mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    const constraints = {
+      video: cameraSelect.value ? { deviceId: { exact: cameraSelect.value } } : true,
+      audio: micSelect.value ? { deviceId: { exact: micSelect.value } } : true
+    };
+    mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
     preview.srcObject = mediaStream;
     setupMicMeter(mediaStream);
     setStatus('摄像头、麦克风已就绪');
+    await refreshDevices();
+    const videoTrack = mediaStream.getVideoTracks()[0];
+    const audioTrack = mediaStream.getAudioTracks()[0];
+    if (videoTrack) cameraSelect.value = videoTrack.getSettings().deviceId || '';
+    if (audioTrack) micSelect.value = audioTrack.getSettings().deviceId || '';
   } catch (err) {
     setStatus(`无法访问摄像头/麦克风：${err.message}`);
   }
+}
+
+async function switchDevice() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') return;
+  if (mediaStream) mediaStream.getTracks().forEach((t) => t.stop());
+  await initCamera();
 }
 
 function pickMimeType() {
@@ -107,6 +158,8 @@ function startRecording() {
     stopTimer();
     recIndicator.hidden = true;
     btnSave.disabled = recordedChunks.length === 0;
+    cameraSelect.disabled = false;
+    micSelect.disabled = false;
     setStatus('录制完成，可保存');
   };
 
@@ -116,6 +169,8 @@ function startRecording() {
   btnStart.disabled = true;
   btnStop.disabled = false;
   btnSave.disabled = true;
+  cameraSelect.disabled = true;
+  micSelect.disabled = true;
   setStatus('录制中…');
 }
 
@@ -171,6 +226,9 @@ player.addEventListener('ended', () => {
 btnStart.addEventListener('click', startRecording);
 btnStop.addEventListener('click', stopRecording);
 btnSave.addEventListener('click', saveRecording);
+cameraSelect.addEventListener('change', switchDevice);
+micSelect.addEventListener('change', switchDevice);
+navigator.mediaDevices.addEventListener('devicechange', refreshDevices);
 
 initCamera();
 refreshList();

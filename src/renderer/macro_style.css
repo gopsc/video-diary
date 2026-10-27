@@ -131,6 +131,46 @@ body {
   box-shadow: 0 0 6px rgba(0, 229, 255, 0.6);
 }
 
+.device-selects {
+  flex-shrink: 0;
+  display: flex;
+  gap: 10px;
+}
+
+.device-select {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  border-radius: 2px;
+  color: #9aa4b8;
+  font-size: 11px;
+  letter-spacing: 1px;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.device-select:hover:not(:disabled) {
+  border-color: rgba(0, 229, 255, 0.45);
+  color: #00e5ff;
+}
+
+.device-select:disabled {
+  border-color: rgba(255, 255, 255, 0.06);
+  color: #3a4150;
+  cursor: not-allowed;
+}
+
+.device-select option {
+  background: #0b0e14;
+  color: #d5dbe5;
+}
+
 .controls {
   flex-shrink: 0;
   display: flex;
