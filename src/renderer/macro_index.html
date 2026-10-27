@@ -31,6 +31,18 @@
         <select id="camera_select" class="device-select"></select>
         <select id="mic_select" class="device-select"></select>
       </div>
+      <div class="volume-controls">
+        <label class="volume-item">
+          <span class="volume-label">麦克风</span>
+          <input type="range" id="mic_volume" class="volume-slider" min="0" max="200" value="100" />
+          <span id="mic_volume_value" class="volume-value">100%</span>
+        </label>
+        <label class="volume-item">
+          <span class="volume-label">扬声器</span>
+          <input type="range" id="speaker_volume" class="volume-slider" min="0" max="100" value="100" />
+          <span id="speaker_volume_value" class="volume-value">100%</span>
+        </label>
+      </div>
       <div class="controls">
         <button id="btn_start" class="btn btn-record">开始录制</button>
         <button id="btn_stop" class="btn btn-stop" disabled>停止</button>

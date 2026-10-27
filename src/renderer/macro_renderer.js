@@ -9,6 +9,10 @@ const btnSave = document.getElementById('btn_save');
 const videoList = document.getElementById('video_list');
 const cameraSelect = document.getElementById('camera_select');
 const micSelect = document.getElementById('mic_select');
+const micVolumeSlider = document.getElementById('mic_volume');
+const speakerVolumeSlider = document.getElementById('speaker_volume');
+const micVolumeValue = document.getElementById('mic_volume_value');
+const speakerVolumeValue = document.getElementById('speaker_volume_value');
 
 let mediaStream = null;
 let mediaRecorder = null;
@@ -17,6 +21,8 @@ let timerId = null;
 let elapsedSec = 0;
 let audioContext = null;
 let micSource = null;
+let gainNode = null;
+let recordDest = null;
 
 function setStatus(text) {
   statusEl.textContent = text;
@@ -46,14 +52,25 @@ function stopTimer() {
 let meterRunning = false;
 let micAnalyser = null;
 
-function setupMicMeter(stream) {
+function setupAudioPipeline(stream) {
   if (!audioContext) audioContext = new AudioContext();
   if (audioContext.state === 'suspended') audioContext.resume();
+
+  if (!gainNode) {
+    gainNode = audioContext.createGain();
+    gainNode.gain.value = micVolumeSlider.value / 100;
+    recordDest = audioContext.createMediaStreamDestination();
+    gainNode.connect(recordDest);
+  }
+
   if (micSource) micSource.disconnect();
   micSource = audioContext.createMediaStreamSource(stream);
+  micSource.connect(gainNode);
+
+  if (micAnalyser) micAnalyser.disconnect();
   micAnalyser = audioContext.createAnalyser();
   micAnalyser.fftSize = 512;
-  micSource.connect(micAnalyser);
+  gainNode.connect(micAnalyser);
 
   if (meterRunning) return;
   meterRunning = true;
@@ -107,7 +124,7 @@ async function initCamera() {
     };
     mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
     preview.srcObject = mediaStream;
-    setupMicMeter(mediaStream);
+    setupAudioPipeline(mediaStream);
     setStatus('摄像头、麦克风已就绪');
     await refreshDevices();
     const videoTrack = mediaStream.getVideoTracks()[0];
@@ -149,7 +166,9 @@ function startRecording() {
   if (!mediaStream) return;
   showLivePreview();
   recordedChunks = [];
-  mediaRecorder = new MediaRecorder(mediaStream, { mimeType: pickMimeType() });
+  const gainedAudio = recordDest ? recordDest.stream.getAudioTracks()[0] : null;
+  const tracks = [...mediaStream.getVideoTracks(), ...(gainedAudio ? [gainedAudio] : mediaStream.getAudioTracks())];
+  mediaRecorder = new MediaRecorder(new MediaStream(tracks), { mimeType: pickMimeType() });
 
   mediaRecorder.ondataavailable = (e) => {
     if (e.data && e.data.size > 0) recordedChunks.push(e.data);
@@ -228,6 +247,14 @@ btnStop.addEventListener('click', stopRecording);
 btnSave.addEventListener('click', saveRecording);
 cameraSelect.addEventListener('change', switchDevice);
 micSelect.addEventListener('change', switchDevice);
+micVolumeSlider.addEventListener('input', () => {
+  if (gainNode) gainNode.gain.value = micVolumeSlider.value / 100;
+  micVolumeValue.textContent = `${micVolumeSlider.value}%`;
+});
+speakerVolumeSlider.addEventListener('input', () => {
+  player.volume = speakerVolumeSlider.value / 100;
+  speakerVolumeValue.textContent = `${speakerVolumeSlider.value}%`;
+});
 navigator.mediaDevices.addEventListener('devicechange', refreshDevices);
 
 initCamera();
